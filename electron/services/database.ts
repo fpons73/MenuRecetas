@@ -43,6 +43,13 @@ function runMigrations(): void {
       instructions TEXT DEFAULT '',
       category TEXT NOT NULL DEFAULT 'General',
       image_url TEXT,
+      calories REAL,
+      protein REAL,
+      carbs REAL,
+      fat REAL,
+      sat_fat REAL,
+      fiber REAL,
+      salt REAL,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -136,10 +143,14 @@ function runMigrations(): void {
     db.exec(`ALTER TABLE shopping_list ADD COLUMN supermarket TEXT`);
   } catch { /* ya existe */ }
 
-  // Migracion: añadir columna price_unit a ingredient_prices
-  try {
-    db.exec(`ALTER TABLE ingredient_prices ADD COLUMN price_unit TEXT NOT NULL DEFAULT 'unidad'`);
-  } catch { /* ya existe */ }
+  // Migracion: añadir columnas nutricionales a recipes
+  try { db.exec(`ALTER TABLE recipes ADD COLUMN calories REAL`); } catch { /* ya existe */ }
+  try { db.exec(`ALTER TABLE recipes ADD COLUMN protein REAL`); } catch { /* ya existe */ }
+  try { db.exec(`ALTER TABLE recipes ADD COLUMN carbs REAL`); } catch { /* ya existe */ }
+  try { db.exec(`ALTER TABLE recipes ADD COLUMN fat REAL`); } catch { /* ya existe */ }
+  try { db.exec(`ALTER TABLE recipes ADD COLUMN sat_fat REAL`); } catch { /* ya existe */ }
+  try { db.exec(`ALTER TABLE recipes ADD COLUMN fiber REAL`); } catch { /* ya existe */ }
+  try { db.exec(`ALTER TABLE recipes ADD COLUMN salt REAL`); } catch { /* ya existe */ }
 }
 
 export function closeDatabase(): void {

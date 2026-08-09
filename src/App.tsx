@@ -5,15 +5,18 @@ import RecipeForm from './components/recipes/RecipeForm';
 import WeeklyCalendar from './components/calendar/WeeklyCalendar';
 import PantryView from './components/pantry/PantryView';
 import ShoppingList from './components/shopping/ShoppingList';
+import StatsView from './components/stats/StatsView';
 import { useRecipeStore } from './stores/recipeStore';
 import { usePantryStore } from './stores/pantryStore';
 import { useCalendarStore } from './stores/calendarStore';
+import { Recipe } from './types';
 
-export type ViewType = 'recipes' | 'calendar' | 'pantry' | 'shopping';
+export type ViewType = 'recipes' | 'calendar' | 'pantry' | 'shopping' | 'stats';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewType>('recipes');
   const [showRecipeForm, setShowRecipeForm] = useState(false);
+  const [editRecipe, setEditRecipe] = useState<Recipe | null>(null);
   const loadRecipes = useRecipeStore(s => s.loadRecipes);
   const loadViability = useRecipeStore(s => s.loadViability);
   const loadPantry = usePantryStore(s => s.loadPantry);
@@ -29,18 +32,30 @@ const App: React.FC = () => {
     loadCalendarEntries(calendarWeekStart);
   }, []);
 
+  const handleNavigate = (v: ViewType) => {
+    setCurrentView(v);
+    setShowRecipeForm(false);
+    setEditRecipe(null);
+  };
+
+  const handleBackFromForm = () => {
+    setShowRecipeForm(false);
+    setEditRecipe(null);
+  };
+
   return (
     <div className="flex h-screen w-screen overflow-hidden">
-      <Sidebar currentView={currentView} onNavigate={(v) => { setCurrentView(v); setShowRecipeForm(false); }} />
+      <Sidebar currentView={currentView} onNavigate={handleNavigate} />
       <main className="flex-1 overflow-hidden flex flex-col">
         {currentView === 'recipes' && (
           showRecipeForm
-            ? <RecipeForm onBack={() => setShowRecipeForm(false)} />
-            : <RecipeLibrary onNewRecipe={() => setShowRecipeForm(true)} />
+            ? <RecipeForm onBack={handleBackFromForm} editRecipe={editRecipe || undefined} />
+            : <RecipeLibrary onNewRecipe={() => setShowRecipeForm(true)} onEditRecipe={(r) => { setEditRecipe(r); setShowRecipeForm(true); }} />
         )}
         {currentView === 'calendar' && <WeeklyCalendar />}
         {currentView === 'pantry' && <PantryView />}
         {currentView === 'shopping' && <ShoppingList />}
+        {currentView === 'stats' && <StatsView />}
       </main>
     </div>
   );

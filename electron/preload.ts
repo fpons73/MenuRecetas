@@ -39,6 +39,9 @@ const api = {
   deletePrice: (id: string) => ipcRenderer.invoke('prices:delete', id),
   optimizeSupermarkets: (weekStart: string) => ipcRenderer.invoke('shopping:optimizeSupermarkets', weekStart),
 
+  // Stats
+  getStats: () => ipcRenderer.invoke('stats:getData'),
+
   // Shopping List
   generateShoppingList: (weekStart: string) => ipcRenderer.invoke('shopping:generate', weekStart),
   getShoppingList: (weekStart: string) => ipcRenderer.invoke('shopping:get', weekStart),

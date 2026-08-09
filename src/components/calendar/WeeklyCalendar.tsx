@@ -51,6 +51,7 @@ const WeeklyCalendar: React.FC = () => {
   const [dayNotes, setDayNotes] = useState<Record<string, string>>({});
   const [editingNoteDate, setEditingNoteDate] = useState<string | null>(null);
   const [noteText, setNoteText] = useState('');
+  const recipeMap = useRecipeStore(s => s.recipes);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -294,6 +295,30 @@ const WeeklyCalendar: React.FC = () => {
                 </tr>
               </tbody>
             </table>
+
+            {(() => {
+              let totalCal = 0, totalProt = 0, totalCarbs = 0;
+              let hasAny = false;
+              for (const entry of entries) {
+                const recipe = recipeMap.find(r => r.id === entry.recipe_id);
+                if (recipe && (recipe.calories || recipe.protein || recipe.carbs)) {
+                  hasAny = true;
+                  const scale = entry.servings / (recipe.base_servings || 1);
+                  if (recipe.calories) totalCal += recipe.calories * scale;
+                  if (recipe.protein) totalProt += recipe.protein * scale;
+                  if (recipe.carbs) totalCarbs += recipe.carbs * scale;
+                }
+              }
+              if (!hasAny) return null;
+              return (
+                <div className="mt-2 px-2 py-1.5 bg-amber-50 rounded border border-amber-200 flex items-center gap-4 text-xs">
+                  <span className="font-semibold text-amber-800">Total semanal:</span>
+                  {totalCal > 0 && <span className="text-amber-700">{Math.round(totalCal)} kcal</span>}
+                  {totalProt > 0 && <span className="text-amber-700">{Math.round(totalProt)}g proteínas</span>}
+                  {totalCarbs > 0 && <span className="text-amber-700">{Math.round(totalCarbs)}g carbohidratos</span>}
+                </div>
+              );
+            })()}
           </div>
 
           {showRecipePanel && (

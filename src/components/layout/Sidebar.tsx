@@ -11,6 +11,7 @@ const navItems: { view: ViewType; label: string; icon: string }[] = [
   { view: 'calendar', label: 'Calendario Semanal', icon: '📅' },
   { view: 'pantry', label: 'Despensa', icon: '🥫' },
   { view: 'shopping', label: 'Lista de la Compra', icon: '🛒' },
+  { view: 'stats', label: 'Estadísticas', icon: '📊' },
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => {

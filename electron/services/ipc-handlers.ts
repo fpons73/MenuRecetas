@@ -111,8 +111,8 @@ export function registerIpcHandlers(): void {
     const recipeId = uuidv4();
     const transaction = database.transaction(() => {
       database.prepare(
-        'INSERT INTO recipes (id, title, description, base_servings, prep_time, cook_time, difficulty, instructions, category) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
-      ).run(recipeId, recipeData.title, recipeData.description || '', recipeData.base_servings || 4, recipeData.prep_time || 15, recipeData.cook_time || 30, recipeData.difficulty || 'medium', recipeData.instructions || '', recipeData.category || 'General');
+        'INSERT INTO recipes (id, title, description, base_servings, prep_time, cook_time, difficulty, instructions, category, calories, protein, carbs, fat, sat_fat, fiber, salt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      ).run(recipeId, recipeData.title, recipeData.description || '', recipeData.base_servings || 4, recipeData.prep_time || 15, recipeData.cook_time || 30, recipeData.difficulty || 'medium', recipeData.instructions || '', recipeData.category || 'General', recipeData.calories ?? null, recipeData.protein ?? null, recipeData.carbs ?? null, recipeData.fat ?? null, recipeData.sat_fat ?? null, recipeData.fiber ?? null, recipeData.salt ?? null);
 
       if (recipeData.ingredients) {
         for (const ing of recipeData.ingredients) {
@@ -140,8 +140,8 @@ export function registerIpcHandlers(): void {
     const database = db();
     const transaction = database.transaction(() => {
       database.prepare(
-        'UPDATE recipes SET title=?, description=?, base_servings=?, prep_time=?, cook_time=?, difficulty=?, instructions=?, category=?, updated_at=datetime(\'now\') WHERE id=?'
-      ).run(recipeData.title, recipeData.description || '', recipeData.base_servings, recipeData.prep_time, recipeData.cook_time, recipeData.difficulty, recipeData.instructions || '', recipeData.category, recipeData.id);
+        'UPDATE recipes SET title=?, description=?, base_servings=?, prep_time=?, cook_time=?, difficulty=?, instructions=?, category=?, calories=?, protein=?, carbs=?, fat=?, sat_fat=?, fiber=?, salt=?, updated_at=datetime(\'now\') WHERE id=?'
+      ).run(recipeData.title, recipeData.description || '', recipeData.base_servings, recipeData.prep_time, recipeData.cook_time, recipeData.difficulty, recipeData.instructions || '', recipeData.category, recipeData.calories ?? null, recipeData.protein ?? null, recipeData.carbs ?? null, recipeData.fat ?? null, recipeData.sat_fat ?? null, recipeData.fiber ?? null, recipeData.salt ?? null, recipeData.id);
 
       if (recipeData.ingredients) {
         database.prepare('DELETE FROM recipe_ingredients WHERE recipe_id = ?').run(recipeData.id);
@@ -784,6 +784,82 @@ const tempPath = path.join(os.tmpdir(), `shopping_list_${weekStart}.pdf`);
     } catch (err: any) {
       return { error: err.message };
     }
+  });
+
+  // ==================== STATS ====================
+  ipcMain.handle('stats:getData', () => {
+    const database = db();
+
+    // Gasto semanal (últimas 8 semanas)
+    const weeklySpending = database.prepare(`
+      SELECT week_start, SUM(COALESCE(price, 0)) as total
+      FROM shopping_list
+      GROUP BY week_start
+      ORDER BY week_start DESC
+      LIMIT 8
+    `).all();
+
+    // Ingredientes más usados en meal plans (preparados)
+    const topIngredients = database.prepare(`
+      SELECT i.name, COUNT(*) as count
+      FROM meal_plan mp
+      JOIN recipe_ingredients ri ON mp.recipe_id = ri.recipe_id
+      JOIN ingredients i ON ri.ingredient_id = i.id
+      WHERE mp.prepared = 1
+      GROUP BY i.name
+      ORDER BY count DESC
+      LIMIT 10
+    `).all();
+
+    // Recetas más cocinadas (preparadas)
+    const topRecipes = database.prepare(`
+      SELECT r.title, COUNT(*) as count
+      FROM meal_plan mp
+      JOIN recipes r ON mp.recipe_id = r.id
+      WHERE mp.prepared = 1
+      GROUP BY r.title
+      ORDER BY count DESC
+      LIMIT 10
+    `).all();
+
+    // Desperdicio: ingredientes caducados sin usar (nunca en un meal plan preparado)
+    const waste = database.prepare(`
+      SELECT i.name, p.quantity, p.unit, p.expiry_date
+      FROM pantry p
+      JOIN ingredients i ON p.ingredient_id = i.id
+      WHERE p.expiry_date IS NOT NULL
+        AND p.expiry_date < date('now')
+        AND p.quantity > 0
+        AND p.ingredient_id NOT IN (
+          SELECT DISTINCT ri.ingredient_id
+          FROM meal_plan mp
+          JOIN recipe_ingredients ri ON mp.recipe_id = ri.recipe_id
+          WHERE mp.prepared = 1
+        )
+      ORDER BY p.expiry_date ASC
+    `).all();
+
+    // Total recetas en biblioteca
+    const totalRecipes = database.prepare('SELECT COUNT(*) as c FROM recipes').get() as any;
+
+    // Total comidas planificadas vs preparadas esta semana
+    const thisWeek = database.prepare("SELECT date('now', 'weekday 1', '-7 days') as d").get() as any;
+    const mealStats = database.prepare(`
+      SELECT
+        COUNT(*) as total,
+        SUM(CASE WHEN prepared = 1 THEN 1 ELSE 0 END) as prepared_count
+      FROM meal_plan
+      WHERE date >= ? AND date < date(?, '+7 days')
+    `).get(thisWeek.d, thisWeek.d) as any;
+
+    return {
+      weeklySpending,
+      topIngredients,
+      topRecipes,
+      waste,
+      totalRecipes: totalRecipes.c,
+      mealStatsThisWeek: mealStats,
+    };
   });
 
   // ==================== DIALOG ====================

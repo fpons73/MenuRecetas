@@ -42,6 +42,13 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ onBack, editRecipe }) => {
   const [difficulty, setDifficulty] = useState(editRecipe?.difficulty || 'medium');
   const [instructions, setInstructions] = useState(editRecipe?.instructions || '');
   const [category, setCategory] = useState(editRecipe?.category || 'General');
+  const [calories, setCalories] = useState(editRecipe?.calories?.toString() || '');
+  const [protein, setProtein] = useState(editRecipe?.protein?.toString() || '');
+  const [carbs, setCarbs] = useState(editRecipe?.carbs?.toString() || '');
+  const [fat, setFat] = useState(editRecipe?.fat?.toString() || '');
+  const [satFat, setSatFat] = useState(editRecipe?.sat_fat?.toString() || '');
+  const [fiber, setFiber] = useState(editRecipe?.fiber?.toString() || '');
+  const [salt, setSalt] = useState(editRecipe?.salt?.toString() || '');
   const initialIngredients = (editRecipe?.ingredients || []).length > 0
     ? (editRecipe?.ingredients || []).map((ing: any) => ({
         id: generateId(),
@@ -86,6 +93,13 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ onBack, editRecipe }) => {
         difficulty,
         instructions: instructions.trim(),
         category,
+        calories: calories ? parseFloat(calories.replace(',', '.')) : null,
+        protein: protein ? parseFloat(protein.replace(',', '.')) : null,
+        carbs: carbs ? parseFloat(carbs.replace(',', '.')) : null,
+        fat: fat ? parseFloat(fat.replace(',', '.')) : null,
+        sat_fat: satFat ? parseFloat(satFat.replace(',', '.')) : null,
+        fiber: fiber ? parseFloat(fiber.replace(',', '.')) : null,
+        salt: salt ? parseFloat(salt.replace(',', '.')) : null,
         ingredients: validIngredients.map(i => ({
           name: i.name.trim(),
           quantity: i.quantity,
@@ -208,6 +222,40 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ onBack, editRecipe }) => {
                   </button>
                 </div>
               ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-surface-700 mb-2">Información nutricional (por ración)</label>
+            <div className="grid grid-cols-4 gap-3">
+              <div>
+                <label className="block text-xs text-surface-500 mb-0.5">Calorías (kcal)</label>
+                <input type="text" inputMode="decimal" value={calories} onChange={e => setCalories(e.target.value)} className="input-field" placeholder="Ej: 450" />
+              </div>
+              <div>
+                <label className="block text-xs text-surface-500 mb-0.5">Proteínas (g)</label>
+                <input type="text" inputMode="decimal" value={protein} onChange={e => setProtein(e.target.value)} className="input-field" placeholder="Ej: 25" />
+              </div>
+              <div>
+                <label className="block text-xs text-surface-500 mb-0.5">Carbohidratos (g)</label>
+                <input type="text" inputMode="decimal" value={carbs} onChange={e => setCarbs(e.target.value)} className="input-field" placeholder="Ej: 40" />
+              </div>
+              <div>
+                <label className="block text-xs text-surface-500 mb-0.5">Grasas totales (g)</label>
+                <input type="text" inputMode="decimal" value={fat} onChange={e => setFat(e.target.value)} className="input-field" placeholder="Ej: 18" />
+              </div>
+              <div>
+                <label className="block text-xs text-surface-500 mb-0.5">Grasas saturadas (g)</label>
+                <input type="text" inputMode="decimal" value={satFat} onChange={e => setSatFat(e.target.value)} className="input-field" placeholder="Ej: 5" />
+              </div>
+              <div>
+                <label className="block text-xs text-surface-500 mb-0.5">Fibra (g)</label>
+                <input type="text" inputMode="decimal" value={fiber} onChange={e => setFiber(e.target.value)} className="input-field" placeholder="Ej: 3" />
+              </div>
+              <div>
+                <label className="block text-xs text-surface-500 mb-0.5">Sal (g)</label>
+                <input type="text" inputMode="decimal" value={salt} onChange={e => setSalt(e.target.value)} className="input-field" placeholder="Ej: 1.5" />
+              </div>
             </div>
           </div>
 

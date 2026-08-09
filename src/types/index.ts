@@ -13,6 +13,13 @@ export interface Recipe {
   instructions: string;
   category: string;
   image_url: string | null;
+  calories: number | null;
+  protein: number | null;
+  carbs: number | null;
+  fat: number | null;
+  sat_fat: number | null;
+  fiber: number | null;
+  salt: number | null;
   created_at: string;
   updated_at: string;
   ingredients?: RecipeIngredient[];

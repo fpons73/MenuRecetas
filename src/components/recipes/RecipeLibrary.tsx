@@ -5,9 +5,10 @@ import RecipeDetail from './RecipeDetail';
 
 interface RecipeLibraryProps {
   onNewRecipe: () => void;
+  onEditRecipe: (recipe: Recipe) => void;
 }
 
-const RecipeLibrary: React.FC<RecipeLibraryProps> = ({ onNewRecipe }) => {
+const RecipeLibrary: React.FC<RecipeLibraryProps> = ({ onNewRecipe, onEditRecipe }) => {
   const {
     viability,     searchTerm, filterMode,
     loadRecipes, loadViability,
@@ -185,6 +186,7 @@ const RecipeLibrary: React.FC<RecipeLibraryProps> = ({ onNewRecipe }) => {
               setShowDetail(false);
             }}
             onExportPdf={() => handleExportPdf(selectedRecipe.id)}
+            onEdit={() => { setShowDetail(false); onEditRecipe(selectedRecipe); }}
           />
         </div>
       )}

@@ -30,6 +30,7 @@ declare global {
       savePrice: (ingredientId: string, supermarket: string, price: number, priceUnit: string) => Promise<any>;
       deletePrice: (id: string) => Promise<any>;
       optimizeSupermarkets: (weekStart: string) => Promise<any[]>;
+      getStats: () => Promise<any>;
       generateShoppingList: (weekStart: string) => Promise<any[]>;
       getShoppingList: (weekStart: string) => Promise<any[]>;
       toggleShoppingItem: (id: string) => Promise<any>;
