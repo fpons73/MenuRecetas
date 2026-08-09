@@ -1,5 +1,5 @@
 {
-  "name": "midweek",
+  "name": "stockchef",
   "version": "1.0.0",
   "description": "Gestión integral de alimentación del hogar — recetas, despensa, planificación semanal y lista de la compra",
   "main": "dist-electron/electron/main.js",
@@ -46,8 +46,8 @@
     "wait-on": "^8.0.0"
   },
   "build": {
-    "appId": "com.midweek.app",
-    "productName": "Midweek",
+    "appId": "com.stockchef.app",
+    "productName": "StockChef",
     "directories": {
       "output": "release"
     },

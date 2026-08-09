@@ -6,7 +6,7 @@ let db: Database.Database;
 
 export function getDbPath(): string {
   const userDataPath = app.getPath('userData');
-  return path.join(userDataPath, 'midweek.db');
+  return path.join(userDataPath, 'stockchef.db');
 }
 
 export function initDatabase(dbPath?: string): Database.Database {

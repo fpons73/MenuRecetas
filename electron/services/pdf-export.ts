@@ -211,7 +211,7 @@ export async function generateRecipePdf(recipe: any): Promise<Buffer> {
 
       // ===== Footer =====
       {
-        text: 'Generado con Midweek',
+        text: 'Generado con StockChef',
         style: 'footer',
         alignment: 'center',
         margin: [0, 30, 0, 0],
@@ -324,7 +324,7 @@ export async function generateShoppingListPdf(items: ShoppingItem[], weekStart: 
   }
 
   content.push({
-    text: 'Generado con Midweek',
+    text: 'Generado con StockChef',
     style: 'footer',
     alignment: 'center',
     margin: [0, 20, 0, 0],
@@ -420,7 +420,7 @@ export async function generateMealPlanPdf(meals: any[], notes: any[], weekStart:
         paddingBottom: () => 4,
       },
     },
-    { text: 'Generado con Midweek', style: 'footer', alignment: 'center', margin: [0, 12, 0, 0] },
+    { text: 'Generado con StockChef', style: 'footer', alignment: 'center', margin: [0, 12, 0, 0] },
   ];
 
   const docDefinition: any = {

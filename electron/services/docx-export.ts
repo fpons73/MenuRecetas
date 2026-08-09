@@ -146,7 +146,7 @@ export async function generateShoppingListDocx(items: ShoppingItem[], weekStart:
   children.push(
     new Paragraph({
       children: [
-        new TextRun({ text: 'Generado por Midweek', italics: true, size: 18, color: '999999' }),
+        new TextRun({ text: 'Generado por StockChef', italics: true, size: 18, color: '999999' }),
       ],
       alignment: AlignmentType.CENTER,
     })

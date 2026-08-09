@@ -14,7 +14,7 @@ function createWindow(): void {
     height: 900,
     minWidth: 1100,
     minHeight: 700,
-      title: 'Midweek — Planifica tu semana',
+      title: 'StockChef — Planifica tu semana',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

@@ -18,7 +18,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => {
   return (
     <aside className="w-56 bg-white border-r border-surface-200 flex flex-col shrink-0">
       <div className="px-5 py-5 border-b border-surface-100">
-        <h1 className="text-xl font-bold text-primary-700 tracking-tight">Midweek</h1>
+        <h1 className="text-xl font-bold text-primary-700 tracking-tight">StockChef</h1>
         <p className="text-xs text-surface-400 mt-1">Planifica tu semana</p>
       </div>
       <nav className="flex-1 px-3 py-4">
@@ -38,7 +38,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => {
         ))}
       </nav>
       <div className="px-5 py-3 border-t border-surface-100">
-        <p className="text-xs text-surface-400">Midweek v1.0</p>
+        <p className="text-xs text-surface-400">StockChef v1.0</p>
       </div>
     </aside>
   );
