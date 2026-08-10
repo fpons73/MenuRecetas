@@ -18,11 +18,41 @@ const RecipeLibrary: React.FC<RecipeLibraryProps> = ({ onNewRecipe, onEditRecipe
   } = useRecipeStore();
 
   const [showDetail, setShowDetail] = useState(false);
+  const [showAiModal, setShowAiModal] = useState(false);
+  const [aiText, setAiText] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
 
   useEffect(() => {
     loadRecipes();
     loadViability();
   }, []);
+
+  const handleAiParse = async () => {
+    if (!aiText.trim()) return;
+    setAiLoading(true);
+    setAiError('');
+    try {
+      const data = await window.midweek.aiParseRecipe(aiText);
+      if (data.error) {
+        setAiError(data.error);
+        return;
+      }
+      const recipe = await useRecipeStore.getState().createRecipe(data);
+      await loadRecipes();
+      await loadViability();
+      setShowAiModal(false);
+      setAiText('');
+      if (recipe) {
+        setSelectedRecipe(recipe);
+        setShowDetail(true);
+      }
+    } catch (err: any) {
+      setAiError(err.message || 'Error');
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const handleImportPdf = async () => {
     try {
@@ -73,6 +103,9 @@ const RecipeLibrary: React.FC<RecipeLibraryProps> = ({ onNewRecipe, onEditRecipe
             <div className="flex gap-2">
               <button onClick={handleImportPdf} className="btn-secondary flex items-center gap-1.5">
                 <span>📄</span> Importar PDF
+              </button>
+              <button onClick={() => setShowAiModal(true)} className="btn-secondary flex items-center gap-1.5">
+                <span>🤖</span> Pegar receta
               </button>
               <button onClick={onNewRecipe} className="btn-primary flex items-center gap-1.5">
                 <span>+</span> Nueva Receta
@@ -188,6 +221,29 @@ const RecipeLibrary: React.FC<RecipeLibraryProps> = ({ onNewRecipe, onEditRecipe
             onExportPdf={() => handleExportPdf(selectedRecipe.id)}
             onEdit={() => { setShowDetail(false); onEditRecipe(selectedRecipe); }}
           />
+        </div>
+      )}
+
+      {showAiModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => { if (!aiLoading) { setShowAiModal(false); setAiError(''); } }}>
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-[600px] max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-surface-900 mb-2">🤖 Extraer receta con IA</h3>
+            <p className="text-xs text-surface-500 mb-4">Pega el texto de una receta (de WhatsApp, web, blog...) y la IA extraerá automáticamente título, ingredientes y pasos.</p>
+            <textarea
+              value={aiText}
+              onChange={e => setAiText(e.target.value)}
+              className="input-field flex-1 min-h-[250px] resize-y mb-4"
+              placeholder="Pega aquí el texto de la receta..."
+              disabled={aiLoading}
+            />
+            {aiError && <p className="text-xs text-red-600 mb-3">{aiError}</p>}
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => { setShowAiModal(false); setAiError(''); }} className="btn-secondary text-xs" disabled={aiLoading}>Cancelar</button>
+              <button onClick={handleAiParse} className="btn-primary text-xs" disabled={aiLoading || !aiText.trim()}>
+                {aiLoading ? '⏳ Analizando...' : '🔍 Extraer receta'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

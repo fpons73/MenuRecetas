@@ -31,6 +31,9 @@ declare global {
       deletePrice: (id: string) => Promise<any>;
       optimizeSupermarkets: (weekStart: string) => Promise<any[]>;
       getStats: () => Promise<any>;
+      aiParseRecipe: (text: string) => Promise<any>;
+      aiSuggestRecipes: (pantry: string, library: string) => Promise<any>;
+      aiGenerateMealPlan: (pantry: string, library: string, prefs: string) => Promise<any>;
       generateShoppingList: (weekStart: string) => Promise<any[]>;
       getShoppingList: (weekStart: string) => Promise<any[]>;
       toggleShoppingItem: (id: string) => Promise<any>;

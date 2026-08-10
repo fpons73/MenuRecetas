@@ -42,6 +42,11 @@ const api = {
   // Stats
   getStats: () => ipcRenderer.invoke('stats:getData'),
 
+  // AI / Ollama
+  aiParseRecipe: (text: string) => ipcRenderer.invoke('ai:parseRecipe', text),
+  aiSuggestRecipes: (pantry: string, library: string) => ipcRenderer.invoke('ai:suggestRecipes', pantry, library),
+  aiGenerateMealPlan: (pantry: string, library: string, prefs: string) => ipcRenderer.invoke('ai:generateMealPlan', pantry, library, prefs),
+
   // Shopping List
   generateShoppingList: (weekStart: string) => ipcRenderer.invoke('shopping:generate', weekStart),
   getShoppingList: (weekStart: string) => ipcRenderer.invoke('shopping:get', weekStart),

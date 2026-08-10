@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { usePantryStore } from '../../stores/pantryStore';
 import { PantryItem, SUPERMARKETS } from '../../types';
+import { useRecipeStore } from '../../stores/recipeStore';
 
 const CATEGORIES = [
   'Verduras', 'Frutas', 'Carnes', 'Pescados', 'Lácteos y huevos',
@@ -55,6 +56,9 @@ const PantryView: React.FC = () => {
   const [expandedPrices, setExpandedPrices] = useState<Record<string, boolean>>({});
   const [priceValues, setPriceValues] = useState<Record<string, Record<string, string>>>({});
   const [loadedPrices, setLoadedPrices] = useState<Record<string, Record<string, string>>>({});
+  const [showAiSuggestions, setShowAiSuggestions] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
 
   useEffect(() => { loadPantry(); loadExpiring(); }, []);
 
@@ -132,14 +136,36 @@ const PantryView: React.FC = () => {
     });
   };
 
+  const handleAiSuggest = async () => {
+    setAiLoading(true);
+    setShowAiSuggestions(true);
+    setAiSuggestion('');
+    try {
+      const pantryText = items.map(i => `${i.ingredient_name} (${i.quantity} ${i.unit}${i.expiry_date ? ', caduca: ' + i.expiry_date : ''})`).join('\n');
+      const recipes = useRecipeStore.getState().recipes.map(r => r.title).join('\n');
+      const result = await window.midweek.aiSuggestRecipes(pantryText, recipes);
+      if (result.error) { setAiSuggestion('Error: ' + result.error); }
+      else { setAiSuggestion(result.text); }
+    } catch (err: any) {
+      setAiSuggestion('Error: ' + err.message);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       <header className="bg-white border-b border-surface-200 px-6 py-4 shrink-0">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-surface-900">Despensa</h2>
-          <button onClick={() => setShowAddForm(!showAddForm)} className="btn-primary text-xs">
-            + Añadir Ingrediente
-          </button>
+          <div className="flex gap-2">
+            <button onClick={handleAiSuggest} disabled={aiLoading} className="btn-primary text-xs flex items-center gap-1 bg-purple-600 hover:bg-purple-700">
+              <span>🤖</span> {aiLoading ? 'Pensando...' : '¿Qué cocino?'}
+            </button>
+            <button onClick={() => setShowAddForm(!showAddForm)} className="btn-primary text-xs">
+              + Añadir Ingrediente
+            </button>
+          </div>
         </div>
         <input
           type="text"
@@ -165,6 +191,16 @@ const PantryView: React.FC = () => {
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {showAiSuggestions && aiSuggestion && (
+          <div className="card p-4 mb-4 bg-purple-50 border-purple-200">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-bold text-purple-700">🤖 Sugerencias de la IA</h3>
+              <button onClick={() => setShowAiSuggestions(false)} className="text-xs text-purple-400 hover:text-purple-600">✕</button>
+            </div>
+            <p className="text-sm text-purple-800 whitespace-pre-wrap leading-relaxed">{aiSuggestion}</p>
           </div>
         )}
 

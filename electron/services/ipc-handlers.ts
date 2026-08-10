@@ -9,6 +9,7 @@ import { generateShoppingListPdf } from './pdf-export';
 import { generateShoppingListDocx } from './docx-export';
 import { generateMealPlanPdf } from './pdf-export';
 import { parsePdfRecipe } from './pdf-import';
+import { parseRecipeFromText, suggestRecipesFromPantry, generateWeeklyMealPlan } from './ollama';
 
 function convertUnit(value: number, fromUnit: string, toUnit: string): number {
   if (fromUnit === toUnit) return value;
@@ -860,6 +861,34 @@ const tempPath = path.join(os.tmpdir(), `shopping_list_${weekStart}.pdf`);
       totalRecipes: totalRecipes.c,
       mealStatsThisWeek: mealStats,
     };
+  });
+
+  // ==================== AI / OLLAMA ====================
+  ipcMain.handle('ai:parseRecipe', async (_e, text: string) => {
+    try {
+      const result = await parseRecipeFromText(text);
+      return result;
+    } catch (err: any) {
+      return { error: err.message || 'Error al conectar con Ollama' };
+    }
+  });
+
+  ipcMain.handle('ai:suggestRecipes', async (_e, pantryText: string, libraryText: string) => {
+    try {
+      const result = await suggestRecipesFromPantry(pantryText, libraryText);
+      return { text: result };
+    } catch (err: any) {
+      return { error: err.message || 'Error al conectar con Ollama' };
+    }
+  });
+
+  ipcMain.handle('ai:generateMealPlan', async (_e, pantryText: string, libraryText: string, preferences: string) => {
+    try {
+      const result = await generateWeeklyMealPlan(pantryText, libraryText, preferences);
+      return { text: result };
+    } catch (err: any) {
+      return { error: err.message || 'Error al conectar con Ollama' };
+    }
   });
 
   // ==================== DIALOG ====================
