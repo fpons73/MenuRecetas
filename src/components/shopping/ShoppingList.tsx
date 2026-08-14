@@ -96,53 +96,78 @@ const ShoppingList: React.FC = () => {
     }
   };
 
+  const handleReplenishPantry = async () => {
+    try {
+      const res = await window.midweek.addLowStockToShopping(calendarWeekStart);
+      if (res.success) {
+        await loadItems(calendarWeekStart);
+      }
+    } catch (err) {
+      console.error('Error replenishing:', err);
+    }
+  };
+
   const grouped = getGrouped();
   const allPurchased = items.length > 0 && items.every(i => i.purchased);
 
   return (
-    <div className="flex flex-col h-full">
-      <header className="bg-white border-b border-surface-200 px-6 py-4 shrink-0">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-surface-900">Lista de la Compra</h2>
-          <div className="flex gap-2">
-            {items.length === 0 ? (
-              <div className="flex gap-2">
-                <button onClick={handleGenerate} className="btn-primary text-xs">
-                  🔄 Generar desde menú semanal
-                </button>
-                <button onClick={() => setShowAddForm(!showAddForm)} className="btn-secondary text-xs">
-                  + Añadir producto
-                </button>
-              </div>
-            ) : (
+    <div className="flex flex-col h-full bg-surface-50">
+      <header className="bg-white border-b border-surface-200 px-6 py-4 shrink-0 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-bold text-surface-900 tracking-tight flex items-center gap-2">
+              🛒 Lista de la Compra
+            </h2>
+            <p className="text-xs text-surface-500 mt-0.5">
+              Generada inteligentemente según tu menú semanal y stock de despensa
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setShowAddForm(!showAddForm)}
+              className="btn-secondary text-xs flex items-center gap-1.5"
+            >
+              <span>➕</span> Añadir Manual
+            </button>
+            <button
+              onClick={handleReplenishPantry}
+              className="btn-secondary text-xs flex items-center gap-1.5"
+              title="Añade productos con stock por debajo del mínimo"
+            >
+              <span>🥫</span> Reponer Despensa
+            </button>
+            <button
+              onClick={handleGenerate}
+              className="btn-primary text-xs flex items-center gap-1.5 shadow-xs"
+              title="Regenerar lista desde el menú semanal"
+            >
+              <span>🔄</span> Generar Menú
+            </button>
+
+            {items.length > 0 && (
               <>
-                <button onClick={() => setShowAddForm(!showAddForm)} className="btn-secondary text-xs">
-                  + Añadir
+                <button
+                  onClick={handleOptimize}
+                  className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1 transition-all"
+                  title="Asignar el supermercado más económico según tu historial de precios"
+                >
+                  <span>💰</span> Optimizar Supermercados
                 </button>
-                <button onClick={handleGenerate} className="btn-secondary text-xs" title="Regenerar lista">
-                  🔄 Regenerar
+                <div className="h-6 w-px bg-surface-200 mx-1 hidden sm:block"></div>
+                <button onClick={handleExportPdf} className="btn-secondary text-xs" title="Exportar PDF">
+                  📄 PDF
                 </button>
-                <button onClick={handleOptimize} className="btn-secondary text-xs" title="Asignar supermercados más baratos">
-                  💰 Optimizar
-                </button>
-                <button onClick={handleExportPdf} className="btn-secondary text-xs">
-                  📥 PDF
-                </button>
-                <button onClick={handleExportDocx} className="btn-secondary text-xs">
+                <button onClick={handleExportDocx} className="btn-secondary text-xs" title="Exportar Word">
                   📝 Word
                 </button>
-                <button onClick={handlePrint} className="btn-secondary text-xs">
-                  🖨️ Imprimir
+                <button onClick={handlePrint} className="btn-secondary text-xs" title="Imprimir">
+                  🖨️
                 </button>
               </>
             )}
           </div>
         </div>
-        {items.length > 0 && (
-          <p className="text-xs text-surface-400 mt-1">
-            Generada a partir del menú semanal, descontando lo disponible en la despensa
-          </p>
-        )}
       </header>
 
       <div className="flex-1 overflow-y-auto p-4">

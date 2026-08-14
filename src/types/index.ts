@@ -42,6 +42,18 @@ export interface RecipeIngredient {
   category?: string;
 }
 
+export type PantryLocation = 'nevera' | 'congelador' | 'despensa' | 'especiero' | 'otros';
+
+export const LOCATION_LABELS: Record<PantryLocation, { label: string; icon: string }> = {
+  nevera: { label: 'Nevera', icon: '❄️' },
+  congelador: { label: 'Congelador', icon: '🧊' },
+  despensa: { label: 'Despensa Seca', icon: '🥫' },
+  especiero: { label: 'Especiero', icon: '🧂' },
+  otros: { label: 'Otros', icon: '📦' },
+};
+
+export const PANTRY_LOCATIONS: PantryLocation[] = ['nevera', 'congelador', 'despensa', 'especiero', 'otros'];
+
 export interface PantryItem {
   id: string;
   ingredient_id: string;
@@ -49,6 +61,8 @@ export interface PantryItem {
   quantity: number;
   unit: string;
   category: string;
+  location?: PantryLocation | string;
+  min_stock?: number;
   expiry_date: string | null;
   updated_at: string;
 }

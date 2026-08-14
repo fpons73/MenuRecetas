@@ -70,6 +70,8 @@ function runMigrations(): void {
       quantity REAL NOT NULL DEFAULT 0,
       unit TEXT NOT NULL,
       category TEXT NOT NULL,
+      location TEXT NOT NULL DEFAULT 'despensa',
+      min_stock REAL DEFAULT 0,
       expiry_date TEXT,
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE CASCADE
@@ -127,6 +129,14 @@ function runMigrations(): void {
   } catch {
     // La columna ya existe
   }
+
+  // Migracion: añadir location y min_stock a pantry si no existen
+  try {
+    db.exec(`ALTER TABLE pantry ADD COLUMN location TEXT NOT NULL DEFAULT 'despensa'`);
+  } catch { /* ya existe */ }
+  try {
+    db.exec(`ALTER TABLE pantry ADD COLUMN min_stock REAL DEFAULT 0`);
+  } catch { /* ya existe */ }
 
   // Migracion: añadir columna deducted_amounts si no existe
   try {

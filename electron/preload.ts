@@ -19,6 +19,7 @@ const api = {
   updatePantryItem: (item: any) => ipcRenderer.invoke('pantry:update', item),
   deletePantryItem: (id: string) => ipcRenderer.invoke('pantry:delete', id),
   getExpiringItems: (days: number) => ipcRenderer.invoke('pantry:getExpiring', days),
+  addLowStockToShopping: (weekStart: string) => ipcRenderer.invoke('pantry:addLowStockToShopping', weekStart),
 
   // Meal Plan
   getMealPlan: (weekStart: string) => ipcRenderer.invoke('mealplan:get', weekStart),
@@ -46,6 +47,11 @@ const api = {
   aiParseRecipe: (text: string) => ipcRenderer.invoke('ai:parseRecipe', text),
   aiSuggestRecipes: (pantry: string, library: string) => ipcRenderer.invoke('ai:suggestRecipes', pantry, library),
   aiGenerateMealPlan: (pantry: string, library: string, prefs: string) => ipcRenderer.invoke('ai:generateMealPlan', pantry, library, prefs),
+  aiChat: (message: string, context?: { pantry?: string; recipes?: string }) => ipcRenderer.invoke('ai:chat', message, context),
+
+  // Backup & Restore
+  exportBackup: () => ipcRenderer.invoke('backup:export'),
+  importBackup: () => ipcRenderer.invoke('backup:import'),
 
   // Shopping List
   generateShoppingList: (weekStart: string) => ipcRenderer.invoke('shopping:generate', weekStart),

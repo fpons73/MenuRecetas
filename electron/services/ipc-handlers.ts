@@ -9,7 +9,7 @@ import { generateShoppingListPdf } from './pdf-export';
 import { generateShoppingListDocx } from './docx-export';
 import { generateMealPlanPdf } from './pdf-export';
 import { parsePdfRecipe } from './pdf-import';
-import { parseRecipeFromText, suggestRecipesFromPantry, generateWeeklyMealPlan } from './ollama';
+import { parseRecipeFromText, suggestRecipesFromPantry, generateWeeklyMealPlan, askChefAssistant } from './ollama';
 
 function convertUnit(value: number, fromUnit: string, toUnit: string): number {
   if (fromUnit === toUnit) return value;
@@ -222,7 +222,7 @@ export function registerIpcHandlers(): void {
   // ==================== PANTRY ====================
   ipcMain.handle('pantry:getAll', () => {
     return db().prepare(
-      'SELECT p.*, i.name as ingredient_name FROM pantry p JOIN ingredients i ON p.ingredient_id = i.id ORDER BY i.category, i.name'
+      'SELECT p.*, i.name as ingredient_name FROM pantry p JOIN ingredients i ON p.ingredient_id = i.id ORDER BY p.location, i.category, i.name'
     ).all();
   });
 
@@ -242,23 +242,27 @@ export function registerIpcHandlers(): void {
 
     const existingPantry = database.prepare('SELECT id, quantity FROM pantry WHERE ingredient_id = ?').get(ingredientId) as any;
     const expiryDate = item.expiry_date || null;
+    const location = item.location || 'despensa';
+    const minStock = item.min_stock !== undefined ? item.min_stock : 0;
 
     if (existingPantry) {
-      database.prepare('UPDATE pantry SET quantity = quantity + ?, expiry_date = ?, updated_at = datetime(\'now\') WHERE ingredient_id = ?')
-        .run(item.quantity, expiryDate, ingredientId);
+      database.prepare('UPDATE pantry SET quantity = quantity + ?, expiry_date = ?, location = ?, min_stock = ?, updated_at = datetime(\'now\') WHERE ingredient_id = ?')
+        .run(item.quantity, expiryDate, location, minStock, ingredientId);
       return database.prepare('SELECT p.*, i.name as ingredient_name FROM pantry p JOIN ingredients i ON p.ingredient_id = i.id WHERE p.id = ?').get(existingPantry.id);
     }
 
     const id = uuidv4();
-    database.prepare('INSERT INTO pantry (id, ingredient_id, quantity, unit, category, expiry_date) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(id, ingredientId, item.quantity, item.unit, item.category, expiryDate);
+    database.prepare('INSERT INTO pantry (id, ingredient_id, quantity, unit, category, location, min_stock, expiry_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(id, ingredientId, item.quantity, item.unit, item.category, location, minStock, expiryDate);
     return database.prepare('SELECT p.*, i.name as ingredient_name FROM pantry p JOIN ingredients i ON p.ingredient_id = i.id WHERE p.id = ?').get(id);
   });
 
   ipcMain.handle('pantry:update', (_e, item: any) => {
     const expiryDate = item.expiry_date !== undefined ? item.expiry_date : null;
-    db().prepare('UPDATE pantry SET quantity = ?, unit = ?, category = ?, expiry_date = ?, updated_at = datetime(\'now\') WHERE id = ?')
-      .run(item.quantity, item.unit, item.category, expiryDate, item.id);
+    const location = item.location || 'despensa';
+    const minStock = item.min_stock !== undefined ? item.min_stock : 0;
+    db().prepare('UPDATE pantry SET quantity = ?, unit = ?, category = ?, location = ?, min_stock = ?, expiry_date = ?, updated_at = datetime(\'now\') WHERE id = ?')
+      .run(item.quantity, item.unit, item.category, location, minStock, expiryDate, item.id);
     return db().prepare('SELECT p.*, i.name as ingredient_name FROM pantry p JOIN ingredients i ON p.ingredient_id = i.id WHERE p.id = ?').get(item.id);
   });
 
@@ -274,6 +278,46 @@ export function registerIpcHandlers(): void {
        WHERE p.expiry_date IS NOT NULL AND p.expiry_date <= date('now', ?)
        AND p.quantity > 0 ORDER BY p.expiry_date ASC`
     ).all(`+${threshold} days`);
+  });
+
+  ipcMain.handle('pantry:addLowStockToShopping', (_e, weekStart: string) => {
+    const database = db();
+    const lowStockItems = database.prepare(`
+      SELECT p.*, i.name as ingredient_name
+      FROM pantry p
+      JOIN ingredients i ON p.ingredient_id = i.id
+      WHERE p.min_stock > 0 AND p.quantity < p.min_stock
+    `).all() as any[];
+
+    let addedCount = 0;
+    const transaction = database.transaction(() => {
+      for (const item of lowStockItems) {
+        const needed = Math.max(0, item.min_stock - item.quantity);
+        if (needed <= 0) continue;
+
+        const existingInList = database.prepare(`
+          SELECT id, quantity_needed FROM shopping_list
+          WHERE ingredient_id = ? AND week_start = ?
+        `).get(item.ingredient_id, weekStart) as any;
+
+        if (existingInList) {
+          database.prepare(`
+            UPDATE shopping_list
+            SET quantity_needed = quantity_needed + ?, purchased = 0
+            WHERE id = ?
+          `).run(needed, existingInList.id);
+        } else {
+          database.prepare(`
+            INSERT INTO shopping_list (id, ingredient_id, quantity_needed, unit, category, purchased, week_start)
+            VALUES (?, ?, ?, ?, ?, 0, ?)
+          `).run(uuidv4(), item.ingredient_id, needed, item.unit, item.category, weekStart);
+        }
+        addedCount++;
+      }
+    });
+
+    transaction();
+    return { success: true, count: addedCount };
   });
 
   // ==================== MEAL PLAN ====================
@@ -891,6 +935,140 @@ const tempPath = path.join(os.tmpdir(), `shopping_list_${weekStart}.pdf`);
     }
   });
 
+  ipcMain.handle('ai:chat', async (_e, message: string, context?: { pantry?: string; recipes?: string }) => {
+    try {
+      const text = await askChefAssistant(message, context);
+      return { text };
+    } catch (err: any) {
+      return { error: err.message || 'Error al procesar la consulta con Ollama' };
+    }
+  });
+
+  // ==================== BACKUP & RESTORE ====================
+  ipcMain.handle('backup:export', async () => {
+    try {
+      const database = db();
+      const backupData = {
+        version: '1.1',
+        exported_at: new Date().toISOString(),
+        ingredients: database.prepare('SELECT * FROM ingredients').all(),
+        recipes: database.prepare('SELECT * FROM recipes').all(),
+        recipe_ingredients: database.prepare('SELECT * FROM recipe_ingredients').all(),
+        pantry: database.prepare('SELECT * FROM pantry').all(),
+        meal_plan: database.prepare('SELECT * FROM meal_plan').all(),
+        shopping_list: database.prepare('SELECT * FROM shopping_list').all(),
+        day_notes: database.prepare('SELECT * FROM day_notes').all(),
+        ingredient_prices: database.prepare('SELECT * FROM ingredient_prices').all(),
+      };
+
+      const win = BrowserWindow.getFocusedWindow();
+      if (!win) return { error: 'No window' };
+
+      const dateStr = new Date().toISOString().split('T')[0];
+      const result = await dialog.showSaveDialog(win, {
+        title: 'Exportar copia de seguridad de StockChef',
+        defaultPath: `StockChef_Backup_${dateStr}.json`,
+        filters: [{ name: 'JSON Backup', extensions: ['json'] }],
+      });
+
+      if (result.canceled || !result.filePath) return { cancelled: true };
+
+      fs.writeFileSync(result.filePath, JSON.stringify(backupData, null, 2), 'utf-8');
+      return { success: true, path: result.filePath };
+    } catch (err: any) {
+      return { error: err.message };
+    }
+  });
+
+  ipcMain.handle('backup:import', async () => {
+    try {
+      const win = BrowserWindow.getFocusedWindow();
+      if (!win) return { error: 'No window' };
+
+      const result = await dialog.showOpenDialog(win, {
+        title: 'Restaurar copia de seguridad de StockChef',
+        filters: [{ name: 'JSON Backup', extensions: ['json'] }],
+        properties: ['openFile'],
+      });
+
+      if (result.canceled || result.filePaths.length === 0) return { cancelled: true };
+
+      const filePath = result.filePaths[0];
+      const content = fs.readFileSync(filePath, 'utf-8');
+      const data = JSON.parse(content);
+
+      if (!data.ingredients || !data.recipes) {
+        return { error: 'El archivo no contiene un formato de copia de seguridad válido de StockChef.' };
+      }
+
+      const database = db();
+      const transaction = database.transaction(() => {
+        // Limpiar tablas dependientes primero
+        database.prepare('DELETE FROM recipe_ingredients').run();
+        database.prepare('DELETE FROM meal_plan').run();
+        database.prepare('DELETE FROM shopping_list').run();
+        database.prepare('DELETE FROM ingredient_prices').run();
+        database.prepare('DELETE FROM pantry').run();
+        database.prepare('DELETE FROM recipes').run();
+        database.prepare('DELETE FROM ingredients').run();
+        database.prepare('DELETE FROM day_notes').run();
+
+        // Insertar ingredients
+        const insertIng = database.prepare('INSERT INTO ingredients (id, name, default_unit, category) VALUES (?, ?, ?, ?)');
+        for (const ing of data.ingredients || []) {
+          insertIng.run(ing.id, ing.name, ing.default_unit, ing.category);
+        }
+
+        // Insertar recipes
+        const insertRecipe = database.prepare('INSERT INTO recipes (id, title, description, base_servings, prep_time, cook_time, difficulty, instructions, category, image_url, calories, protein, carbs, fat, sat_fat, fiber, salt, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+        for (const r of data.recipes || []) {
+          insertRecipe.run(r.id, r.title, r.description || '', r.base_servings || 4, r.prep_time || 15, r.cook_time || 30, r.difficulty || 'medium', r.instructions || '', r.category || 'General', r.image_url || null, r.calories ?? null, r.protein ?? null, r.carbs ?? null, r.fat ?? null, r.sat_fat ?? null, r.fiber ?? null, r.salt ?? null, r.created_at || new Date().toISOString(), r.updated_at || new Date().toISOString());
+        }
+
+        // Insertar recipe_ingredients
+        const insertRI = database.prepare('INSERT INTO recipe_ingredients (id, recipe_id, ingredient_id, quantity, unit) VALUES (?, ?, ?, ?, ?)');
+        for (const ri of data.recipe_ingredients || []) {
+          insertRI.run(ri.id || uuidv4(), ri.recipe_id, ri.ingredient_id, ri.quantity, ri.unit);
+        }
+
+        // Insertar pantry
+        const insertPantry = database.prepare('INSERT INTO pantry (id, ingredient_id, quantity, unit, category, location, min_stock, expiry_date, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+        for (const p of data.pantry || []) {
+          insertPantry.run(p.id, p.ingredient_id, p.quantity, p.unit, p.category, p.location || 'despensa', p.min_stock || 0, p.expiry_date || null, p.updated_at || new Date().toISOString());
+        }
+
+        // Insertar meal_plan
+        const insertMeal = database.prepare('INSERT INTO meal_plan (id, date, meal_type, recipe_id, servings, prepared, deducted_amounts) VALUES (?, ?, ?, ?, ?, ?, ?)');
+        for (const m of data.meal_plan || []) {
+          insertMeal.run(m.id, m.date, m.meal_type, m.recipe_id, m.servings, m.prepared ? 1 : 0, m.deducted_amounts || null);
+        }
+
+        // Insertar shopping_list
+        const insertShop = database.prepare('INSERT INTO shopping_list (id, ingredient_id, quantity_needed, unit, category, purchased, price, supermarket, week_start) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+        for (const s of data.shopping_list || []) {
+          insertShop.run(s.id, s.ingredient_id, s.quantity_needed, s.unit, s.category, s.purchased ? 1 : 0, s.price ?? null, s.supermarket || null, s.week_start);
+        }
+
+        // Insertar day_notes
+        const insertNote = database.prepare('INSERT INTO day_notes (id, date, note) VALUES (?, ?, ?)');
+        for (const n of data.day_notes || []) {
+          insertNote.run(n.id || uuidv4(), n.date, n.note || '');
+        }
+
+        // Insertar ingredient_prices
+        const insertPrice = database.prepare('INSERT INTO ingredient_prices (id, ingredient_id, supermarket, price, price_unit, updated_at) VALUES (?, ?, ?, ?, ?, ?)');
+        for (const pr of data.ingredient_prices || []) {
+          insertPrice.run(pr.id || uuidv4(), pr.ingredient_id, pr.supermarket, pr.price, pr.price_unit || 'unidad', pr.updated_at || new Date().toISOString());
+        }
+      });
+
+      transaction();
+      return { success: true, count: { recipes: (data.recipes || []).length, pantry: (data.pantry || []).length } };
+    } catch (err: any) {
+      return { error: err.message };
+    }
+  });
+
   // ==================== DIALOG ====================
   ipcMain.handle('dialog:save', async (_e, options: any) => {
     const win = BrowserWindow.getFocusedWindow();
@@ -898,3 +1076,4 @@ const tempPath = path.join(os.tmpdir(), `shopping_list_${weekStart}.pdf`);
     return dialog.showSaveDialog(win, options);
   });
 }
+

@@ -17,6 +17,7 @@ declare global {
       updatePantryItem: (item: any) => Promise<any>;
       deletePantryItem: (id: string) => Promise<any>;
       getExpiringItems: (days: number) => Promise<any[]>;
+      addLowStockToShopping: (weekStart: string) => Promise<any>;
       getMealPlan: (weekStart: string) => Promise<any[]>;
       addMealPlanEntry: (entry: any) => Promise<any>;
       updateMealPlanEntry: (entry: any) => Promise<any>;
@@ -34,6 +35,9 @@ declare global {
       aiParseRecipe: (text: string) => Promise<any>;
       aiSuggestRecipes: (pantry: string, library: string) => Promise<any>;
       aiGenerateMealPlan: (pantry: string, library: string, prefs: string) => Promise<any>;
+      aiChat: (message: string, context?: { pantry?: string; recipes?: string }) => Promise<any>;
+      exportBackup: () => Promise<any>;
+      importBackup: () => Promise<any>;
       generateShoppingList: (weekStart: string) => Promise<any[]>;
       getShoppingList: (weekStart: string) => Promise<any[]>;
       toggleShoppingItem: (id: string) => Promise<any>;
